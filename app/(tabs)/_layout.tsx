@@ -32,6 +32,7 @@ export default function TabsLayout() {
         options={{
           headerShown: false,
           title: "Booking",
+          href:"/booking",
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? "calendar" : "calendar-outline"}

@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { KeyboardAvoidingView, Platform, View, StyleSheet, Text, TouchableOpacity, Alert, TouchableWithoutFeedback, Keyboard, ScrollView } from "react-native";
-import { TextInput, Button, HelperText } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { Account, ID } from "react-native-appwrite";
+import { Button, HelperText, TextInput } from "react-native-paper";
 import { client } from "../appwrite";
 
 export default function AuthScreen() {
@@ -192,6 +192,7 @@ export default function AuthScreen() {
                         {!isLogin && (
                             <>
                                 <TextInput
+    
                                     label="Email"
                                     value={email}
                                     onChangeText={(text) => {
@@ -295,6 +296,9 @@ const styles = StyleSheet.create({
     input: {
         marginBottom: 4,
         backgroundColor: "#FFFFFF",
+        ...(Platform.OS === 'web' && {
+            outlineStyle:'none' as any,
+        })
     },
     btnLogin: {
         backgroundColor: "#2563EB",
