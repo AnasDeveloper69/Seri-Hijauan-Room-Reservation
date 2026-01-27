@@ -1,8 +1,5 @@
-import {  Tabs,useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Alert } from "react-native";
-import { Account } from "react-native-appwrite";
-import { client } from "../../appwrite";
+import { Tabs } from "expo-router";
 
 export default function TabsLayout() {
   return (
@@ -10,7 +7,6 @@ export default function TabsLayout() {
       screenOptions={{
         tabBarActiveTintColor: "coral",
         tabBarInactiveTintColor: "#9CA3AF",
-  
       }}
     >
       <Tabs.Screen
@@ -32,7 +28,23 @@ export default function TabsLayout() {
         options={{
           headerShown: false,
           title: "Booking",
-          href:"/booking",
+          href: "/booking",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "document" : "calendar-outline"}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          headerShown: false,
+          title: "Calendar",
+          href: "/calendar",
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? "calendar" : "calendar-outline"}
@@ -42,7 +54,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
     </Tabs>
   );
 }

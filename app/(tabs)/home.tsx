@@ -160,16 +160,10 @@ export default function BookingDashboard() {
     result = bookings.filter((b) => b.deposit === filterStatus);
   }
   
-
   return result;
-};
+  };
 
   const filteredBookings = getFilteredBookings();
-
-  // ========================================
-  // RENDER: Calendar Section
-  // ========================================
-  
 
   // ========================================
   // RENDER: User Profile Section
