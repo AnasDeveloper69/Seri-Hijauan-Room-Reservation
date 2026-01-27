@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { bookingService } from "@/services/bookingService";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
+  Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
-  Platform,
+  Text,
   TouchableOpacity,
-  RefreshControl
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { bookingService } from '@/services/bookingService';
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // ========================================
 // INTERFACES & TYPES
@@ -23,10 +23,12 @@ interface Booking {
   adults: number;
   children: number;
   amount: number;
-  deposit: 'pending' | 'completed';
-  paymentType: 'deposit' | 'full';
-  status: 'pending' | 'completed';
+  deposit: "pending" | "completed";
+  paymentType: "deposit" | "full";
+  status: "pending" | "completed";
   createdAt: string;
+  total: string;
+  balance: string;
 }
 
 interface User {
@@ -46,9 +48,9 @@ interface DashboardStats {
 // MOCK DATA - Replace with real data from your backend
 // ========================================
 const currentUser: User = {
-  name: 'John Doe',
-  email: 'john.doe@hotel.com',
-  role: 'Hotel Manager',
+  name: "John Doe",
+  email: "john.doe@hotel.com",
+  role: "Hotel Manager",
 };
 
 // ========================================
@@ -56,27 +58,29 @@ const currentUser: User = {
 // ========================================
 export default function BookingDashboard() {
   // State for filtering bookings (pending or completed)
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
-  const [bookings,setBookings] = useState<Booking[]>([]);
-  const [loading,setLoading] = useState(true);
-  const [refreshing,setRefreshing] = useState(false);
-  const [searchQuery,setSearchQuery] = useState();
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "pending" | "completed"
+  >("all");
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState();
 
   const formatDate = (dateString: string): string => {
-  if (!dateString) return 'N/A';
-  
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'N/A';
-    
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    
-    return `${day}-${month}-${year}`;
-  } catch (error) {
-    return 'N/A';
-  }
+    if (!dateString) return "N/A";
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "N/A";
+
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+
+      return `${day}-${month}-${year}`;
+    } catch (error) {
+      return "N/A";
+    }
   };
 
   // ========================================
@@ -89,26 +93,31 @@ export default function BookingDashboard() {
         // setBookings(result.data);
         const mappedBookings: Booking[] = result.data.map((doc) => ({
           id: doc.$id,
-          customerName: doc.fullName || 'N/A',
+          customerName: doc.fullName || "N/A",
           rooms: doc.Rooms ?? [],
-          checkin: formatDate(doc.checkin),          // ← Now matches interface
-          checkout: formatDate(doc.checkout),        // ← Now matches interface
+          checkin: formatDate(doc.checkin), // ← Now matches interface
+          checkout: formatDate(doc.checkout), // ← Now matches interface
           adults: doc.numberOfAdults ?? 0,
           children: doc.numberOfChildren ?? 0,
           amount: doc.amount ?? 0,
-          status: doc.status ?? 'pending',
-          paymentType: doc.fullpayment ?? 'deposit', // ← Fixed: was doc.paymentType
-          deposit: (doc.deposit?.toLowerCase() as 'pending' | 'completed') ?? 'pending', // ← Fixed: added type assertion
+          status: doc.status ?? "pending",
+          paymentType: doc.fullpayment ?? "deposit", // ← Fixed: was doc.paymentType
+          deposit:
+            (doc.deposit?.toLowerCase() as "pending" | "completed") ??
+            "pending", // ← Fixed: added type assertion
           createdAt: formatDate(doc.$createdAt),
-    }));
+          total: doc.total,
+          balance: doc.balance,
+        }));
 
-      mappedBookings.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setBookings(mappedBookings);
+        mappedBookings.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        setBookings(mappedBookings);
       }
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error("Error fetching bookings:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -130,13 +139,17 @@ export default function BookingDashboard() {
   // ========================================
   const calculateStats = (): DashboardStats => {
     const totalBookings = bookings.length;
-    const pendingBookings = bookings.filter((b) => b.deposit === 'pending').length;
-    const completedBookings = bookings.filter((b) => b.deposit === 'completed').length;
-    
+    const pendingBookings = bookings.filter(
+      (b) => b.deposit === "pending",
+    ).length;
+    const completedBookings = bookings.filter(
+      (b) => b.deposit === "completed",
+    ).length;
+
     // Calculate total revenue from completed bookings
     const totalRevenue = bookings
-      .filter((b) => b.deposit === 'completed')
-      .reduce((sum, booking) => sum + (booking.amount || 0), 0);
+      .filter((b) => b.deposit === "completed")
+      .reduce((sum, booking) => sum + parseFloat(booking.total || "0"), 0);
 
     return {
       totalBookings,
@@ -155,12 +168,11 @@ export default function BookingDashboard() {
   const getFilteredBookings = (): Booking[] => {
     let result = bookings;
 
-  if (filterStatus !== 'all') {
-    
-    result = bookings.filter((b) => b.deposit === filterStatus);
-  }
-  
-  return result;
+    if (filterStatus !== "all") {
+      result = bookings.filter((b) => b.deposit === filterStatus);
+    }
+
+    return result;
   };
 
   const filteredBookings = getFilteredBookings();
@@ -172,7 +184,10 @@ export default function BookingDashboard() {
     <View style={styles.userProfileCard}>
       <View style={styles.avatarContainer}>
         <Text style={styles.avatarText}>
-          {currentUser.name.split(' ').map((n) => n[0]).join('')}
+          {currentUser.name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")}
         </Text>
       </View>
       <View style={styles.userInfo}>
@@ -229,7 +244,7 @@ export default function BookingDashboard() {
       <View style={styles.revenueContent}>
         <Text style={styles.revenueLabel}>Total Revenue (Completed)</Text>
         <Text style={styles.revenueAmount}>
-          ${stats.totalRevenue.toFixed(2)}
+          RM {stats.totalRevenue.toFixed(2)}
         </Text>
         <Text style={styles.revenueSubtext}>
           From {stats.completedBookings} completed booking(s)
@@ -252,14 +267,14 @@ export default function BookingDashboard() {
         <TouchableOpacity
           style={[
             styles.filterButton,
-            filterStatus === 'all' && styles.filterButtonActive,
+            filterStatus === "all" && styles.filterButtonActive,
           ]}
-          onPress={() => setFilterStatus('all')}
+          onPress={() => setFilterStatus("all")}
         >
           <Text
             style={[
               styles.filterButtonText,
-              filterStatus === 'all' && styles.filterButtonTextActive,
+              filterStatus === "all" && styles.filterButtonTextActive,
             ]}
           >
             All ({bookings.length})
@@ -269,14 +284,14 @@ export default function BookingDashboard() {
         <TouchableOpacity
           style={[
             styles.filterButton,
-            filterStatus === 'pending' && styles.filterButtonActive,
+            filterStatus === "pending" && styles.filterButtonActive,
           ]}
-          onPress={() => setFilterStatus('pending')}
+          onPress={() => setFilterStatus("pending")}
         >
           <Text
             style={[
               styles.filterButtonText,
-              filterStatus === 'pending' && styles.filterButtonTextActive,
+              filterStatus === "pending" && styles.filterButtonTextActive,
             ]}
           >
             Pending ({stats.pendingBookings})
@@ -286,14 +301,14 @@ export default function BookingDashboard() {
         <TouchableOpacity
           style={[
             styles.filterButton,
-            filterStatus === 'completed' && styles.filterButtonActive,
+            filterStatus === "completed" && styles.filterButtonActive,
           ]}
-          onPress={() => setFilterStatus('completed')}
+          onPress={() => setFilterStatus("completed")}
         >
           <Text
             style={[
               styles.filterButtonText,
-              filterStatus === 'completed' && styles.filterButtonTextActive,
+              filterStatus === "completed" && styles.filterButtonTextActive,
             ]}
           >
             Completed ({stats.completedBookings})
@@ -311,13 +326,13 @@ export default function BookingDashboard() {
     <View key={booking.id} style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
         <View>
-          <Text style={styles.bookingId}>{booking.id}</Text>
+          {/* <Text style={styles.bookingId}>{booking.id}</Text> */}
           <Text style={styles.bookingCustomer}>{booking.customerName}</Text>
         </View>
         <View
           style={[
             styles.statusBadge,
-            booking.deposit === 'completed'
+            booking.deposit === "completed"
               ? styles.statusBadgeCompleted
               : styles.statusBadgePending,
           ]}
@@ -325,7 +340,7 @@ export default function BookingDashboard() {
           <Text
             style={[
               styles.statusText,
-              booking.deposit === 'completed'
+              booking.deposit === "completed"
                 ? styles.statusTextCompleted
                 : styles.statusTextPending,
             ]}
@@ -339,7 +354,7 @@ export default function BookingDashboard() {
         <View style={styles.bookingDetailRow}>
           <Text style={styles.bookingDetailLabel}>🏨 Rooms:</Text>
           <Text style={styles.bookingDetailValue}>
-            {booking.rooms.join(', ')}
+            {booking.rooms.join(", ")}
           </Text>
         </View>
 
@@ -363,16 +378,17 @@ export default function BookingDashboard() {
         <View style={styles.bookingDetailRow}>
           <Text style={styles.bookingDetailLabel}>💳 Payment:</Text>
           <Text style={styles.bookingDetailValue}>
-            {booking.paymentType === 'full' ? 'Full Payment' : 'Deposit'}
+            {booking.paymentType === "full" ? "Full Payment" : "Deposit"}
           </Text>
         </View>
       </View>
 
+      {/* footer */}
       <View style={styles.bookingFooter}>
-        <Text style={styles.bookingAmount}>${booking.amount.toFixed(2)}</Text>
-        <Text style={styles.bookingDate}>
-          Booked: {booking.createdAt}
+        <Text style={styles.bookingAmount}>
+          Total: RM {parseFloat(booking.total).toFixed(2)}
         </Text>
+        <Text style={styles.bookingDate}>Booked: {booking.createdAt}</Text>
       </View>
     </View>
   );
@@ -388,27 +404,29 @@ export default function BookingDashboard() {
       ) : (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
-            No {filterStatus !== 'all' ? filterStatus : ''} bookings found
+            No {filterStatus !== "all" ? filterStatus : ""} bookings found
           </Text>
         </View>
       )}
     </View>
   );
 
-  
-
   // ========================================
   // MAIN RENDER
   // ========================================
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl
-      refreshing={refreshing}  // ← Use state here
-      onRefresh={onRefresh}
-      colors={['#4F46E5']}     // Android
-      tintColor="#4F46E5"      // iOS
-    />}
-    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing} // ← Use state here
+            onRefresh={onRefresh}
+            colors={["#4F46E5"]} // Android
+            tintColor="#4F46E5" // iOS
+          />
+        }
+      >
         {/* Dashboard Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Dashboard</Text>
@@ -444,25 +462,25 @@ export default function BookingDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
   },
   scrollContent: {
     paddingBottom: 40,
   },
   header: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: "#4F46E5",
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#C7D2FE',
+    color: "#C7D2FE",
   },
   contentContainer: {
     padding: 16,
@@ -470,13 +488,13 @@ const styles = StyleSheet.create({
 
   // User Profile Styles
   userProfileCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -486,46 +504,46 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#4F46E5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#4F46E5",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 16,
   },
   avatarText: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
   },
   userInfo: {
     flex: 1,
   },
   userName: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: 8,
   },
   roleBadge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: "#EEF2FF",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   roleText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#4F46E5',
+    fontWeight: "600",
+    color: "#4F46E5",
   },
 
   // Statistics Cards Styles
   statsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 16,
   },
@@ -533,36 +551,36 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-    position: 'relative',
-    overflow: 'hidden',
+    position: "relative",
+    overflow: "hidden",
   },
   statCardBlue: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: "#3B82F6",
   },
   statCardOrange: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: "#F59E0B",
   },
   statCardGreen: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
   },
   statNumber: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     opacity: 0.9,
   },
   statIcon: {
-    position: 'absolute',
+    position: "absolute",
     right: 12,
     top: 12,
     opacity: 0.3,
@@ -573,46 +591,46 @@ const styles = StyleSheet.create({
 
   // Revenue Card Styles
   revenueCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
     borderLeftWidth: 4,
-    borderLeftColor: '#10B981',
+    borderLeftColor: "#10B981",
   },
   revenueContent: {
     flex: 1,
   },
   revenueLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: 8,
   },
   revenueAmount: {
     fontSize: 36,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 4,
   },
   revenueSubtext: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
   revenueIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#D1FAE5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#D1FAE5",
+    justifyContent: "center",
+    alignItems: "center",
   },
   revenueIconText: {
     fontSize: 32,
@@ -624,12 +642,12 @@ const styles = StyleSheet.create({
   },
   filterTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 12,
   },
   filterButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   filterButton: {
@@ -637,22 +655,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
+    borderColor: "#E5E7EB",
+    alignItems: "center",
   },
   filterButtonActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: "#4F46E5",
+    borderColor: "#4F46E5",
   },
   filterButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: "600",
+    color: "#6B7280",
   },
   filterButtonTextActive: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
 
   // Booking List Styles
@@ -660,33 +678,34 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bookingCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   bookingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: "#F3F4F6",
   },
   bookingId: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#4F46E5',
+    fontWeight: "bold",
+    color: "#4F46E5",
     marginBottom: 4,
   },
   bookingCustomer: {
-    fontSize: 14,
-    color: '#1F2937',
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#1F2937",
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -694,67 +713,67 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusBadgePending: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: "#FEF3C7",
   },
   statusBadgeCompleted: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: "#D1FAE5",
   },
   statusText: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   statusTextPending: {
-    color: '#92400E',
+    color: "#92400E",
   },
   statusTextCompleted: {
-    color: '#065F46',
+    color: "#065F46",
   },
   bookingDetails: {
     gap: 8,
     marginBottom: 12,
   },
   bookingDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   bookingDetailLabel: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     flex: 1,
   },
   bookingDetailValue: {
     fontSize: 13,
-    color: '#1F2937',
-    fontWeight: '500',
+    color: "#1F2937",
+    fontWeight: "500",
     flex: 2,
-    textAlign: 'right',
+    textAlign: "right",
   },
   bookingFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: "#F3F4F6",
   },
   bookingAmount: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#10B981',
+    fontWeight: "bold",
+    color: "#10B981",
   },
   bookingDate: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
 
   // Empty State Styles
   emptyState: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#9CA3AF',
-    textAlign: 'center',
+    color: "#9CA3AF",
+    textAlign: "center",
   },
 });

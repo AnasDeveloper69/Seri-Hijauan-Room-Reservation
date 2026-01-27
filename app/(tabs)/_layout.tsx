@@ -31,7 +31,7 @@ export default function TabsLayout() {
           href: "/booking",
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
-              name={focused ? "document" : "calendar-outline"}
+              name={focused ? "document" : "document-outline"}
               size={size}
               color={color}
             />

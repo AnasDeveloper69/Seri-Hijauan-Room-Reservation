@@ -1,17 +1,19 @@
-import { bookingService, BookingData } from '@/services/bookingService';
-import React, { useState } from 'react';
+import { BookingData, bookingService } from "@/services/bookingService";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import React, { useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Platform,
-  Alert,
-  ActivityIndicator
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import BookingHeader from "../components/Bookingheader";
 
 interface FormData {
   name: string;
@@ -22,8 +24,9 @@ interface FormData {
   transportPlate: string;
   checkIn: string;
   checkOut: string;
-  rooms: string[]; // Changed from 'room: string[]' to 'rooms: string[]' for clarity
-  paymentType: 'deposit' | 'full';
+  rooms: string[];
+  paymentType: "deposit" | "full" | "";
+  depositAmount: string;
 }
 
 interface FormErrors {
@@ -31,29 +34,114 @@ interface FormErrors {
 }
 
 const rooms = [
-  { id: 'seroja', name: 'Seroja', description: 'Elegant room with garden view' },
-  { id: 'dahlia', name: 'Dahlia', description: 'Spacious room with balcony' },
-  { id: 'adelia', name: 'Adelia', description: 'Luxury suite with premium amenities' },
+  {
+    id: "seroja",
+    name: "Seroja",
+    description: "Elegant room with garden view",
+  },
+  { id: "dahlia", name: "Dahlia", description: "Spacious room with balcony" },
+  {
+    id: "adelia",
+    name: "Adelia",
+    description: "Luxury suite with premium amenities",
+  },
 ];
 
 export default function BookingForm() {
   const [formData, setFormData] = useState<FormData>({
-    name: '',
-    address: '',
-    phone: '',
-    adults: '1',
-    children: '0',
-    transportPlate: '',
-    checkIn: '',
-    checkOut: '',
-    rooms: [], // Changed from room: '' to rooms: []
-    paymentType: 'deposit',
+    name: "",
+    address: "",
+    phone: "",
+    adults: "1",
+    children: "0",
+    transportPlate: "",
+    checkIn: "",
+    checkOut: "",
+    rooms: [],
+    paymentType: "",
+    depositAmount: "",
   });
 
-  const [loading,setLoading] = useState(false);
-
+  // Loading State
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+
+  // Date picker states
+  const [showCheckInPicker, setShowCheckInPicker] = useState(false);
+  const [showCheckOutPicker, setShowCheckOutPicker] = useState(false);
+  const [checkInDate, setCheckInDate] = useState(new Date());
+  const [checkOutDate, setCheckOutDate] = useState(new Date());
+
+  // Handle check-in date change
+  const onCheckInChange = (event: any, selectedDate?: Date) => {
+    // On Android, the picker closes automatically, so we hide the state
+    if (Platform.OS === "android") {
+      setShowCheckInPicker(false);
+    }
+
+    // Update date whenever it changes (allows scrolling through dates)
+    if (selectedDate) {
+      setCheckInDate(selectedDate);
+      const formattedDate = selectedDate.toISOString().split("T")[0];
+      setFormData((prev) => ({
+        ...prev,
+        checkIn: formattedDate,
+      }));
+
+      // Clear error
+      if (errors.checkIn) {
+        setErrors((prev) => ({
+          ...prev,
+          checkIn: "",
+        }));
+      }
+    }
+  };
+
+  // Handle check-out date change
+  const onCheckOutChange = (event: any, selectedDate?: Date) => {
+    // On Android, the picker closes automatically, so we hide the state
+    if (Platform.OS === "android") {
+      setShowCheckOutPicker(false);
+    }
+
+    // Update date whenever it changes (allows scrolling through dates)
+    if (selectedDate) {
+      setCheckOutDate(selectedDate);
+      const formattedDate = selectedDate.toISOString().split("T")[0];
+      setFormData((prev) => ({
+        ...prev,
+        checkOut: formattedDate,
+      }));
+
+      // Clear error
+      if (errors.checkOut) {
+        setErrors((prev) => ({
+          ...prev,
+          checkOut: "",
+        }));
+      }
+    }
+  };
+
+  // Clear check-in date
+  const clearCheckInDate = () => {
+    setFormData((prev) => ({
+      ...prev,
+      checkIn: "",
+    }));
+    setCheckInDate(new Date());
+  };
+
+  // Clear check-out date
+  const clearCheckOutDate = () => {
+    setFormData((prev) => ({
+      ...prev,
+      checkOut: "",
+    }));
+    setCheckOutDate(new Date());
+  };
 
   // Regular handleChange for text inputs
   const handleChange = (field: keyof FormData, value: string) => {
@@ -65,33 +153,30 @@ export default function BookingForm() {
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
-        [field]: '',
+        [field]: "",
       }));
     }
   };
 
-  // ========================================
-  // ADD THIS: Toggle function for multiple room selection
-  // This function handles selecting/deselecting rooms
-  // ========================================
+  // Toggle function for multiple room selection
   const toggleRoom = (roomId: string) => {
     setFormData((prev) => {
       const currentRooms = prev.rooms;
       const isSelected = currentRooms.includes(roomId);
-      
+
       return {
         ...prev,
         rooms: isSelected
-          ? currentRooms.filter((id) => id !== roomId)  // Remove if already selected
-          : [...currentRooms, roomId],                   // Add if not selected
+          ? currentRooms.filter((id) => id !== roomId)
+          : [...currentRooms, roomId],
       };
     });
-    
+
     // Clear room error when user selects a room
     if (errors.rooms) {
       setErrors((prev) => ({
         ...prev,
-        rooms: '',
+        rooms: "",
       }));
     }
   };
@@ -101,42 +186,59 @@ export default function BookingForm() {
 
     // Name validation
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = "Name is required";
     }
 
     // Address validation
     if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
+      newErrors.address = "Address is required";
     }
 
     // Phone validation
     const phoneRegex = /^[\d\s\-+()]+$/;
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = "Phone number is required";
     } else if (!phoneRegex.test(formData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
+      newErrors.phone = "Please enter a valid phone number";
     }
 
     // Adults validation
     if (parseInt(formData.adults) < 1) {
-      newErrors.adults = 'At least 1 adult is required';
+      newErrors.adults = "At least 1 adult is required";
     }
 
     // Check-in date validation
     if (!formData.checkIn) {
-      newErrors.checkIn = 'Check-in date is required';
+      newErrors.checkIn = "Check-in date is required";
     }
 
     // Check-out date validation
     if (!formData.checkOut) {
-      newErrors.checkOut = 'Check-out date is required';
+      newErrors.checkOut = "Check-out date is required";
     } else if (formData.checkIn && formData.checkOut <= formData.checkIn) {
-      newErrors.checkOut = 'Check-out must be after check-in date';
+      newErrors.checkOut = "Check-out must be after check-in date";
     }
 
-    // Room validation - UPDATED for multiple rooms
+    // Room validation
     if (formData.rooms.length === 0) {
-      newErrors.rooms = 'Please select at least one room';
+      newErrors.rooms = "Please select at least one room";
+    }
+
+    // Payment type validation
+    if (!formData.paymentType) {
+      newErrors.paymentType = "Please select a payment type";
+    }
+
+    // Deposit amount validation
+    if (formData.paymentType === "deposit") {
+      if (!formData.depositAmount.trim()) {
+        newErrors.depositAmount = "Deposit amount is required";
+      } else if (
+        isNaN(parseFloat(formData.depositAmount)) ||
+        parseFloat(formData.depositAmount) <= 0
+      ) {
+        newErrors.depositAmount = "Please enter a valid amount";
+      }
     }
 
     setErrors(newErrors);
@@ -145,104 +247,95 @@ export default function BookingForm() {
 
   // Function to generate next booking ID
   const generateBookingId = async () => {
-    try{
-      // get all bookings to find the highest ID
-      const result = await  bookingService.getAllBookings();
+    try {
+      const result = await bookingService.getAllBookings();
 
-      if(result.success && result.data && result.data.length > 0) { 
-        // Find the highest booking ID number
-      const maxId = Math.max(
-        ...result.data
-          .map(doc => doc.bookingId)
-          .filter(id => id !== null && id !== undefined)
-      );
+      if (result.success && result.data && result.data.length > 0) {
+        const maxId = Math.max(
+          ...result.data
+            .map((doc) => doc.bookingId)
+            .filter((id) => id !== null && id !== undefined),
+        );
 
-      return maxId + 1 ;
+        return maxId + 1;
       }
 
-      // if no booking exist , start from 1
       return 1;
-    } catch (error){
-      console.error('Error generating booking ID:', error);
-      return Date.now(); // Fallback to timestamp
+    } catch (error) {
+      console.error("Error generating booking ID:", error);
+      return Date.now();
     }
   };
 
-  const handleSubmit = async() => {
+  const handleSubmit = async () => {
     if (!validateForm()) {
       return;
     }
     setLoading(true);
 
-    try{
-      //generate new booking ID
+    try {
       const newBookingId = await generateBookingId();
-      //Calculate the booking amount
       const amount = bookingService.calculateAmount(
         formData.rooms,
         formData.checkIn,
         formData.checkOut,
-        parseInt(formData.adults),
-        parseInt(formData.children)
       );
 
-      // Prepare data for Appwrite
       const bookingData: BookingData = {
-      // bookingId:newBookingId,
-      fullName: formData.name,                        // Changed
-      address: formData.address,
-      phoneNumber: formData.phone,                    // Changed
-      numberOfAdults: parseInt(formData.adults),      // Changed
-      numberOfChildren: parseInt(formData.children),  // Changed
-      vehicleLicensePlate: formData.transportPlate || undefined, // Changed
-      checkin: formData.checkIn,                      // Changed (lowercase)
-      checkout: formData.checkOut,                    // Changed (lowercase)
-      Rooms: formData.rooms,                          // Changed (capital R)
-      deposit: 'Pending',                  // This is required
-      fullpayment: formData.paymentType === 'full' ? 'full' : undefined, // Optional
-    };
-    
-    console.log('Submitting booking:', bookingData);
+        fullName: formData.name,
+        address: formData.address,
+        phoneNumber: formData.phone,
+        numberOfAdults: parseInt(formData.adults),
+        numberOfChildren: parseInt(formData.children),
+        vehicleLicensePlate: formData.transportPlate || undefined,
+        checkin: formData.checkIn,
+        checkout: formData.checkOut,
+        Rooms: formData.rooms,
+        deposit: "Pending",
+        fullpayment: formData.paymentType === "full" ? "true" : undefined,
+      };
 
-    // Save to AppWrite
-    const result = await bookingService.createBooking(bookingData);
+      console.log("Submitting booking:", bookingData);
 
-    if (result.success) {
-      setSubmitted(true);
-      Alert.alert('Success', 'Booking created successfully!');
-    } else {
-      Alert.alert('Error', result.error || 'Failed to create booking');
+      const result = await bookingService.createBooking(bookingData);
+
+      if (result.success) {
+        setSubmitted(true);
+        Alert.alert("Success", "Booking created successfully!");
+      } else {
+        Alert.alert("Error", result.error || "Failed to create booking");
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      Alert.alert("Error", "An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Submission error:', error);
-    Alert.alert('Error', 'An unexpected error occurred');
-  } finally {
-    setLoading(false);
-  }
-
   };
 
   const handleReset = () => {
     setFormData({
-      name: '',
-      address: '',
-      phone: '',
-      adults: '1',
-      children: '0',
-      transportPlate: '',
-      checkIn: '',
-      checkOut: '',
-      rooms: [], // Changed from room: '' to rooms: []
-      paymentType: 'deposit',
+      name: "",
+      address: "",
+      phone: "",
+      adults: "1",
+      children: "0",
+      transportPlate: "",
+      checkIn: "",
+      checkOut: "",
+      rooms: [],
+      paymentType: "",
+      depositAmount: "",
     });
     setErrors({});
     setSubmitted(false);
+    setCheckInDate(new Date());
+    setCheckOutDate(new Date());
   };
 
   if (submitted) {
-    // UPDATED: Get all selected rooms instead of single room
     const selectedRooms = rooms.filter((r) => formData.rooms.includes(r.id));
-    
+
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.successContainer}>
@@ -253,12 +346,12 @@ export default function BookingForm() {
           <Text style={styles.successSubtitle}>
             Thank you, {formData.name}. Your booking has been received.
           </Text>
-          
+
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Room(s):</Text>
               <Text style={styles.summaryValue}>
-                {selectedRooms.map((r) => r.name).join(', ')}
+                {selectedRooms.map((r) => r.name).join(", ")}
               </Text>
             </View>
             <View style={styles.summaryRow}>
@@ -275,6 +368,14 @@ export default function BookingForm() {
                 {formData.adults} Adult(s), {formData.children} Child(ren)
               </Text>
             </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Payment:</Text>
+              <Text style={styles.summaryValue}>
+                {formData.paymentType === "full"
+                  ? "Full Payment"
+                  : `Deposit - RM ${formData.depositAmount}`}
+              </Text>
+            </View>
           </View>
 
           <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
@@ -287,15 +388,8 @@ export default function BookingForm() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <BookingHeader />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Hotel Booking Form</Text>
-          <Text style={styles.headerSubtitle}>
-            Complete the form below to reserve your room
-          </Text>
-        </View>
-
         <View style={styles.formContainer}>
           {/* Personal Information Section */}
           <View style={styles.section}>
@@ -307,11 +401,13 @@ export default function BookingForm() {
               <TextInput
                 style={[styles.input, errors.name && styles.inputError]}
                 value={formData.name}
-                onChangeText={(value) => handleChange('name', value)}
+                onChangeText={(value) => handleChange("name", value)}
                 placeholder="Enter your full name"
                 placeholderTextColor="#9CA3AF"
               />
-              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+              {errors.name && (
+                <Text style={styles.errorText}>{errors.name}</Text>
+              )}
             </View>
 
             {/* Address */}
@@ -320,13 +416,15 @@ export default function BookingForm() {
               <TextInput
                 style={[styles.textArea, errors.address && styles.inputError]}
                 value={formData.address}
-                onChangeText={(value) => handleChange('address', value)}
+                onChangeText={(value) => handleChange("address", value)}
                 placeholder="Enter your address"
                 placeholderTextColor="#9CA3AF"
                 multiline
                 numberOfLines={3}
               />
-              {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
+              {errors.address && (
+                <Text style={styles.errorText}>{errors.address}</Text>
+              )}
             </View>
 
             {/* Phone */}
@@ -335,12 +433,14 @@ export default function BookingForm() {
               <TextInput
                 style={[styles.input, errors.phone && styles.inputError]}
                 value={formData.phone}
-                onChangeText={(value) => handleChange('phone', value)}
-                placeholder="+1 (555) 123-4567"
+                onChangeText={(value) => handleChange("phone", value)}
+                placeholder="+60-019-XXX-XXXX"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="phone-pad"
               />
-              {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+              {errors.phone && (
+                <Text style={styles.errorText}>{errors.phone}</Text>
+              )}
             </View>
           </View>
 
@@ -355,10 +455,12 @@ export default function BookingForm() {
                 <TextInput
                   style={[styles.input, errors.adults && styles.inputError]}
                   value={formData.adults}
-                  onChangeText={(value) => handleChange('adults', value)}
+                  onChangeText={(value) => handleChange("adults", value)}
                   keyboardType="number-pad"
                 />
-                {errors.adults && <Text style={styles.errorText}>{errors.adults}</Text>}
+                {errors.adults && (
+                  <Text style={styles.errorText}>{errors.adults}</Text>
+                )}
               </View>
 
               <View style={[styles.inputGroup, styles.halfWidth]}>
@@ -366,7 +468,7 @@ export default function BookingForm() {
                 <TextInput
                   style={styles.input}
                   value={formData.children}
-                  onChangeText={(value) => handleChange('children', value)}
+                  onChangeText={(value) => handleChange("children", value)}
                   keyboardType="number-pad"
                 />
               </View>
@@ -374,11 +476,13 @@ export default function BookingForm() {
 
             {/* Transport Plate */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>🚗 Vehicle Plate Number (Optional)</Text>
+              <Text style={styles.label}>
+                🚗 Vehicle Plate Number (Optional)
+              </Text>
               <TextInput
                 style={styles.input}
                 value={formData.transportPlate}
-                onChangeText={(value) => handleChange('transportPlate', value)}
+                onChangeText={(value) => handleChange("transportPlate", value)}
                 placeholder="ABC-1234"
                 placeholderTextColor="#9CA3AF"
                 autoCapitalize="characters"
@@ -387,41 +491,129 @@ export default function BookingForm() {
 
             {/* Dates */}
             <View style={styles.row}>
+              {/* Check-in Date */}
               <View style={[styles.inputGroup, styles.halfWidth]}>
                 <Text style={styles.label}>📅 Check-in Date *</Text>
-                <TextInput
-                  style={[styles.input, errors.checkIn && styles.inputError]}
-                  value={formData.checkIn}
-                  onChangeText={(value) => handleChange('checkIn', value)}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#9CA3AF"
-                />
-                {errors.checkIn && <Text style={styles.errorText}>{errors.checkIn}</Text>}
+                <View style={styles.dateInputContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.datePickerButton,
+                      errors.checkIn && styles.inputError,
+                    ]}
+                    onPress={() => {
+                      setShowCheckOutPicker(false);
+                      setShowCheckInPicker(true);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.datePickerText,
+                        !formData.checkIn && styles.placeholderText,
+                      ]}
+                    >
+                      {formData.checkIn || "Select date"}
+                    </Text>
+                  </TouchableOpacity>
+                  {formData.checkIn && (
+                    <TouchableOpacity
+                      style={styles.clearButton}
+                      onPress={clearCheckInDate}
+                    >
+                      <Text style={styles.clearButtonText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {errors.checkIn && (
+                  <Text style={styles.errorText}>{errors.checkIn}</Text>
+                )}
               </View>
 
+              {/* Check-out Date */}
               <View style={[styles.inputGroup, styles.halfWidth]}>
                 <Text style={styles.label}>📅 Check-out Date *</Text>
-                <TextInput
-                  style={[styles.input, errors.checkOut && styles.inputError]}
-                  value={formData.checkOut}
-                  onChangeText={(value) => handleChange('checkOut', value)}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#9CA3AF"
-                />
-                {errors.checkOut && <Text style={styles.errorText}>{errors.checkOut}</Text>}
+                <View style={styles.dateInputContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.datePickerButton,
+                      errors.checkOut && styles.inputError,
+                    ]}
+                    onPress={() => {
+                      setShowCheckInPicker(false);
+                      setShowCheckOutPicker(true);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.datePickerText,
+                        !formData.checkOut && styles.placeholderText,
+                      ]}
+                    >
+                      {formData.checkOut || "Select date"}
+                    </Text>
+                  </TouchableOpacity>
+                  {formData.checkOut && (
+                    <TouchableOpacity
+                      style={styles.clearButton}
+                      onPress={clearCheckOutDate}
+                    >
+                      <Text style={styles.clearButtonText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {errors.checkOut && (
+                  <Text style={styles.errorText}>{errors.checkOut}</Text>
+                )}
               </View>
             </View>
 
-            {/* ========================================
-                UPDATED: Room Selection - Multiple Rooms
-                USE toggleRoom() function here instead of handleChange()
-                ======================================== */}
+            {/* Date Pickers - NO minimumDate restriction */}
+            {showCheckInPicker && (
+              <View>
+                <DateTimePicker
+                  value={checkInDate}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={onCheckInChange}
+                />
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    style={styles.doneButton}
+                    onPress={() => setShowCheckInPicker(false)}
+                  >
+                    <Text style={styles.doneButtonText}>Done</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {showCheckOutPicker && (
+              <View>
+                <DateTimePicker
+                  value={checkOutDate}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={onCheckOutChange}
+                />
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    style={styles.doneButton}
+                    onPress={() => setShowCheckOutPicker(false)}
+                  >
+                    <Text style={styles.doneButtonText}>Done</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* Room Selection */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Select Room(s) * (Multiple allowed)</Text>
+              <Text style={styles.label}>
+                Select Room(s) * (Multiple allowed)
+              </Text>
               <Text style={styles.helperText}>
                 Tap to select or deselect rooms. You can book multiple rooms.
               </Text>
-              
+
               {rooms.map((room) => (
                 <TouchableOpacity
                   key={room.id}
@@ -429,12 +621,14 @@ export default function BookingForm() {
                     styles.roomCard,
                     formData.rooms.includes(room.id) && styles.roomCardSelected,
                   ]}
-                  onPress={() => toggleRoom(room.id)} // CHANGED: Use toggleRoom instead of handleChange
+                  onPress={() => toggleRoom(room.id)}
                 >
                   <View style={styles.roomCardContent}>
                     <View style={styles.roomInfo}>
                       <Text style={styles.roomName}>{room.name}</Text>
-                      <Text style={styles.roomDescription}>{room.description}</Text>
+                      <Text style={styles.roomDescription}>
+                        {room.description}
+                      </Text>
                     </View>
                     {formData.rooms.includes(room.id) && (
                       <View style={styles.checkmark}>
@@ -444,7 +638,7 @@ export default function BookingForm() {
                   </View>
                 </TouchableOpacity>
               ))}
-              
+
               {/* Show selected count */}
               {formData.rooms.length > 0 && (
                 <View style={styles.selectedRoomsContainer}>
@@ -453,8 +647,10 @@ export default function BookingForm() {
                   </Text>
                 </View>
               )}
-              
-              {errors.rooms && <Text style={styles.errorText}>{errors.rooms}</Text>}
+
+              {errors.rooms && (
+                <Text style={styles.errorText}>{errors.rooms}</Text>
+              )}
             </View>
           </View>
 
@@ -466,15 +662,52 @@ export default function BookingForm() {
               <TouchableOpacity
                 style={[
                   styles.paymentCard,
-                  formData.paymentType === 'deposit' && styles.paymentCardSelected,
+                  formData.paymentType === "deposit" &&
+                    styles.paymentCardSelected,
+                  errors.paymentType &&
+                    !formData.paymentType &&
+                    styles.inputError,
                 ]}
-                onPress={() => handleChange('paymentType', 'deposit')}
+                onPress={() => handleChange("paymentType", "deposit")}
               >
                 <View style={styles.paymentContent}>
                   <Text style={styles.paymentTitle}>Deposit</Text>
-                  <Text style={styles.paymentSubtitle}>Pay partial amount now</Text>
+                  <Text style={styles.paymentSubtitle}>
+                    Pay partial amount now
+                  </Text>
+
+                  {/* Deposit Amount Input - Shows only when deposit is selected */}
+                  {formData.paymentType === "deposit" && (
+                    <View style={styles.depositAmountContainer}>
+                      <Text style={styles.label}>💰 Deposit Amount *</Text>
+                      <View style={styles.amountInputWrapper}>
+                        <Text style={styles.currencySymbol}>RM</Text>
+                        <TextInput
+                          style={[
+                            styles.amountInput,
+                            errors.depositAmount && styles.inputError,
+                          ]}
+                          value={formData.depositAmount}
+                          onChangeText={(value) =>
+                            handleChange("depositAmount", value)
+                          }
+                          placeholder="0.00"
+                          placeholderTextColor="#9CA3AF"
+                          keyboardType="decimal-pad"
+                        />
+                      </View>
+                      {errors.depositAmount && (
+                        <Text style={styles.errorText}>
+                          {errors.depositAmount}
+                        </Text>
+                      )}
+                      <Text style={styles.helperText}>
+                        Enter the deposit amount you want to pay now
+                      </Text>
+                    </View>
+                  )}
                 </View>
-                {formData.paymentType === 'deposit' && (
+                {formData.paymentType === "deposit" && (
                   <View style={styles.checkmark}>
                     <Text style={styles.checkmarkText}>✓</Text>
                   </View>
@@ -484,26 +717,47 @@ export default function BookingForm() {
               <TouchableOpacity
                 style={[
                   styles.paymentCard,
-                  formData.paymentType === 'full' && styles.paymentCardSelected,
+                  formData.paymentType === "full" && styles.paymentCardSelected,
+                  errors.paymentType &&
+                    !formData.paymentType &&
+                    styles.inputError,
                 ]}
-                onPress={() => handleChange('paymentType', 'full')}
+                onPress={() => handleChange("paymentType", "full")}
               >
                 <View style={styles.paymentContent}>
                   <Text style={styles.paymentTitle}>Full Payment</Text>
-                  <Text style={styles.paymentSubtitle}>Pay complete amount now</Text>
+                  <Text style={styles.paymentSubtitle}>
+                    Pay complete amount now
+                  </Text>
                 </View>
-                {formData.paymentType === 'full' && (
+                {formData.paymentType === "full" && (
                   <View style={styles.checkmark}>
                     <Text style={styles.checkmarkText}>✓</Text>
                   </View>
                 )}
               </TouchableOpacity>
             </View>
+
+            {/* Error message for payment type */}
+            {errors.paymentType && (
+              <Text style={styles.errorText}>{errors.paymentType}</Text>
+            )}
           </View>
 
           {/* Submit Button */}
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>Complete Booking</Text>
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              loading && styles.submitButtonDisabled,
+            ]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitButtonText}>Complete Booking</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -514,35 +768,20 @@ export default function BookingForm() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
   },
   scrollContent: {
     paddingBottom: 40,
-  },
-  header: {
-    backgroundColor: '#4F46E5',
-    padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#C7D2FE',
   },
   formContainer: {
     padding: 16,
   },
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -550,8 +789,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 16,
   },
   inputGroup: {
@@ -559,215 +798,289 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: "500",
+    color: "#374151",
     marginBottom: 8,
   },
   helperText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: 12,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: "#D1D5DB",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: "#1F2937",
   },
   textArea: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: "#D1D5DB",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: "#1F2937",
     minHeight: 80,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   inputError: {
-    borderColor: '#EF4444',
+    borderColor: "#EF4444",
   },
   errorText: {
-    color: '#EF4444',
+    color: "#EF4444",
     fontSize: 12,
     marginTop: 4,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 12,
   },
   halfWidth: {
     flex: 1,
   },
+  dateInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  datePickerButton: {
+    flex: 1,
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 8,
+    padding: 12,
+    justifyContent: "center",
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: "#1F2937",
+  },
+  placeholderText: {
+    color: "#9CA3AF",
+  },
+  clearButton: {
+    backgroundColor: "#EF4444",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  clearButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  doneButton: {
+    backgroundColor: "#4F46E5",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  doneButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   roomCard: {
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
   },
   roomCardSelected: {
-    borderColor: '#4F46E5',
-    backgroundColor: '#EEF2FF',
+    borderColor: "#4F46E5",
+    backgroundColor: "#EEF2FF",
   },
   roomCardContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   roomInfo: {
     flex: 1,
   },
   roomName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 4,
   },
   roomDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   checkmark: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#4F46E5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#4F46E5",
+    justifyContent: "center",
+    alignItems: "center",
   },
   checkmarkText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   selectedRoomsContainer: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: "#EEF2FF",
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
   },
   selectedRoomsText: {
-    color: '#4F46E5',
+    color: "#4F46E5",
     fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
   },
   paymentRow: {
     gap: 12,
   },
   paymentCard: {
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   paymentCardSelected: {
-    borderColor: '#4F46E5',
-    backgroundColor: '#EEF2FF',
+    borderColor: "#4F46E5",
+    backgroundColor: "#EEF2FF",
   },
   paymentContent: {
     flex: 1,
   },
   paymentTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 4,
   },
   paymentSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
+  },
+  depositAmountContainer: {
+    marginTop: 15,
+  },
+  amountInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 8,
+    paddingLeft: 12,
+  },
+  currencySymbol: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginRight: 8,
+  },
+  amountInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    color: "#1F2937",
   },
   submitButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: "#4F46E5",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
-    shadowColor: '#4F46E5',
+    shadowColor: "#4F46E5",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
+  submitButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+  },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   successContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 24,
   },
   successIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#D1FAE5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#D1FAE5",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 24,
   },
   successCheckmark: {
     fontSize: 40,
-    color: '#10B981',
-    fontWeight: 'bold',
+    color: "#10B981",
+    fontWeight: "bold",
   },
   successTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 8,
   },
   successSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: 24,
   },
   summaryCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderRadius: 12,
     padding: 20,
-    width: '100%',
+    width: "100%",
     marginBottom: 24,
   },
   summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 12,
   },
   summaryLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: "600",
+    color: "#6B7280",
   },
   summaryValue: {
     fontSize: 14,
-    color: '#1F2937',
+    color: "#1F2937",
   },
   resetButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: "#4F46E5",
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
   resetButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
