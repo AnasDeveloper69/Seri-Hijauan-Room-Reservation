@@ -389,6 +389,12 @@ export default function BookingDashboard() {
           Total: RM {parseFloat(booking.total).toFixed(2)}
         </Text>
         <Text style={styles.bookingDate}>Booked: {booking.createdAt}</Text>
+        {/* <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditBooking(booking)}
+        >
+          <Text style={styles.editButtonText}>✏️ Edit</Text>
+        </TouchableOpacity> */}
       </View>
     </View>
   );
@@ -775,5 +781,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#9CA3AF",
     textAlign: "center",
+  },
+  editButton: {
+    backgroundColor: "#4F46E5",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  editButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
