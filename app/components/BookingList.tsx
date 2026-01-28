@@ -5,7 +5,7 @@ import { Text } from "react-native-paper";
 interface Booking {
   id: string;
   date: string;
-  roomName: string;
+  room: string;
   bookedBy: string;
   checkin: string;
   checkout: string;
@@ -80,7 +80,7 @@ export default function BookingList({
       {/* Booking Details */}
       <View style={styles.bookingDetails}>
         <View style={styles.headerRow}>
-          <Text style={styles.roomName}>{booking.roomName}</Text>
+          <Text style={styles.roomName}>{booking.room}</Text>
           <View
             style={[
               styles.statusBadge,
@@ -109,11 +109,16 @@ export default function BookingList({
           <Text style={styles.value}>{booking.bookedBy}</Text>
         </View>
 
+        {/* ✅ IMPROVED: Check-in date with proper formatting */}
         <View style={styles.infoRow}>
-          <Text style={styles.label}>Time:</Text>
-          <Text style={styles.value}>
-            {booking.checkin} - {booking.checkout}
-          </Text>
+          <Text style={styles.label}>Check-in:</Text>
+          <Text style={styles.value}>{booking.checkin}</Text>
+        </View>
+
+        {/* ✅ IMPROVED: Check-out date with proper formatting */}
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Check-out:</Text>
+          <Text style={styles.value}>{booking.checkout}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -346,6 +351,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#333",
     fontWeight: "500",
+    flex: 1,
   },
   emptyState: {
     alignItems: "center",
