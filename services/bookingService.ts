@@ -1,9 +1,9 @@
 import { Query } from "react-native-appwrite";
 import {
-    BOOKINGS_COLLECTION_ID,
-    DATABASE_ID,
-    databases,
-    ID,
+  BOOKINGS_COLLECTION_ID,
+  DATABASE_ID,
+  databases,
+  ID,
 } from "../lib/appwrite";
 
 export interface BookingData {
@@ -11,18 +11,18 @@ export interface BookingData {
   fullName: string; // Changed from customerName
   address?: string; // Optional (NULL allowed)
   phoneNumber: string; // Changed from phone
-  numberOfAdults: number; // Changed from adults
-  numberOfChildren?: number; // Changed from children (NULL allowed)
+  NumAdults: number; // Changed from adults
+  NumChildren?: number; // Changed from children (NULL allowed)
   vehicleLicensePlate?: string; // Changed from transportPlate (NULL allowed)
   checkin: string; // Changed from checkIn (datetime)
   checkout: string; // Changed from checkOut (datetime)
   Rooms: string[]; // Changed from rooms (note: capital R)
-  deposit: "Pending" | "Completed"; // This is the required enum field
+  deposit?: number; // changed into number
   fullpayment?: "true" | "false"; // Optional enum (NULL allowed)
   status?: "pending" | "completed"; // Add if you have a status field
-  amount?: number;
-  total?: string;
-  balance?: string; // Add if you have an amount field
+  total?: number;
+  balance?: number; // Add if you have an amount field
+  paymentType?: "deposit" | "full";
 }
 
 // Interface for Appwrite document response

@@ -23,12 +23,11 @@ interface Booking {
   adults: number;
   children: number;
   amount: number;
-  deposit: "pending" | "completed";
-  paymentType: "deposit" | "full";
+  deposit: number;
   status: "pending" | "completed";
   createdAt: string;
-  total: string;
-  balance: string;
+  total: number;
+  balance: number;
 }
 
 interface User {
@@ -100,14 +99,12 @@ export default function BookingDashboard() {
           adults: doc.numberOfAdults ?? 0,
           children: doc.numberOfChildren ?? 0,
           amount: doc.amount ?? 0,
-          status: doc.status ?? "pending",
-          paymentType: doc.fullpayment ?? "deposit", // ← Fixed: was doc.paymentType
-          deposit:
-            (doc.deposit?.toLowerCase() as "pending" | "completed") ??
-            "pending", // ← Fixed: added type assertion
+          status:
+            (doc.status?.toLowerCase() as "pending" | "completed") ?? "pending",
+          deposit: parseFloat(doc.deposit) ?? 0,
           createdAt: formatDate(doc.$createdAt),
-          total: doc.total,
-          balance: doc.balance,
+          total: parseFloat(doc.total) ?? 0, // type number
+          balance: parseFloat(doc.balance) ?? 0,
         }));
 
         mappedBookings.sort(
@@ -140,16 +137,16 @@ export default function BookingDashboard() {
   const calculateStats = (): DashboardStats => {
     const totalBookings = bookings.length;
     const pendingBookings = bookings.filter(
-      (b) => b.deposit === "pending",
+      (b) => b.status === "pending",
     ).length;
     const completedBookings = bookings.filter(
-      (b) => b.deposit === "completed",
+      (b) => b.status === "completed",
     ).length;
 
     // Calculate total revenue from completed bookings
     const totalRevenue = bookings
-      .filter((b) => b.deposit === "completed")
-      .reduce((sum, booking) => sum + parseFloat(booking.total || "0"), 0);
+      .filter((b) => b.status === "completed")
+      .reduce((sum, booking) => sum + booking.total, 0);
 
     return {
       totalBookings,
@@ -169,7 +166,7 @@ export default function BookingDashboard() {
     let result = bookings;
 
     if (filterStatus !== "all") {
-      result = bookings.filter((b) => b.deposit === filterStatus);
+      result = bookings.filter((b) => b.status === filterStatus);
     }
 
     return result;
@@ -332,7 +329,7 @@ export default function BookingDashboard() {
         <View
           style={[
             styles.statusBadge,
-            booking.deposit === "completed"
+            booking.status === "completed"
               ? styles.statusBadgeCompleted
               : styles.statusBadgePending,
           ]}
@@ -340,12 +337,12 @@ export default function BookingDashboard() {
           <Text
             style={[
               styles.statusText,
-              booking.deposit === "completed"
+              booking.status === "completed"
                 ? styles.statusTextCompleted
                 : styles.statusTextPending,
             ]}
           >
-            {booking.deposit.toUpperCase()}
+            {booking.status.toUpperCase()}
           </Text>
         </View>
       </View>
@@ -378,15 +375,31 @@ export default function BookingDashboard() {
         <View style={styles.bookingDetailRow}>
           <Text style={styles.bookingDetailLabel}>💳 Payment:</Text>
           <Text style={styles.bookingDetailValue}>
-            {booking.paymentType === "full" ? "Full Payment" : "Deposit"}
+            {booking.status === "completed" ? "Full Payment" : "Deposit"}
           </Text>
         </View>
+      </View>
+
+      {/* ✅ ADDED: Show deposit amount */}
+      <View style={styles.bookingDetailRow}>
+        <Text style={styles.bookingDetailLabel}>💵 Deposit Paid:</Text>
+        <Text style={styles.bookingDetailValue}>
+          RM {booking.deposit.toFixed(2)}
+        </Text>
+      </View>
+
+      {/* ✅ ADDED: Show balance */}
+      <View style={styles.bookingDetailRow}>
+        <Text style={styles.bookingDetailLabel}>💰 Balance:</Text>
+        <Text style={styles.bookingDetailValue}>
+          RM {booking.balance.toFixed(2)}
+        </Text>
       </View>
 
       {/* footer */}
       <View style={styles.bookingFooter}>
         <Text style={styles.bookingAmount}>
-          Total: RM {parseFloat(booking.total).toFixed(2)}
+          Total: RM {booking.total.toFixed(2)}
         </Text>
         <Text style={styles.bookingDate}>Booked: {booking.createdAt}</Text>
         {/* <TouchableOpacity
@@ -736,7 +749,7 @@ const styles = StyleSheet.create({
   },
   bookingDetails: {
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 15,
   },
   bookingDetailRow: {
     flexDirection: "row",
