@@ -1,13 +1,13 @@
 import { bookingService } from "@/services/bookingService";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -120,7 +120,7 @@ export default function CalendarView() {
             checkin: formatDateForDisplay(doc.checkin), // DD-MM-YYYY for display
             checkout: formatDateForDisplay(doc.checkout), // DD-MM-YYYY for display
             deposit:
-              (doc.deposit?.toLowerCase() as "pending" | "completed") ??
+              (doc.status?.toLowerCase() as "pending" | "completed") ??
               "pending",
           };
         });

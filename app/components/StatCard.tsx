@@ -8,7 +8,7 @@ interface StatCardProps {
     type: 'blue' | 'orange' | 'green';
 }
 
-export const StatCard = ({ number, label, icon, type }: StatCardProps) => {
+const StatCard = ({ number, label, icon, type }: StatCardProps) => {
   const bgStyle = 
     type === 'blue' ? styles.statCardBlue : 
     type === 'orange' ? styles.statCardOrange : 
@@ -35,3 +35,5 @@ const styles = StyleSheet.create({
   statIcon: { position: 'absolute', right: 12, top: 12, opacity: 0.3 },
   statIconText: { fontSize: 32 },
 });
+
+export default StatCard;

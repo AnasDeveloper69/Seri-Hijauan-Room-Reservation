@@ -2,15 +2,15 @@ import { BookingData, bookingService } from "@/services/bookingService";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BookingHeader from "../components/Bookingheader";
@@ -325,7 +325,6 @@ Balance: RM ${amounts.balance.toFixed(2)}`,
   if (submitted) {
     const selectedRooms = rooms.filter((r) => formData.rooms.includes(r.id));
     const amounts = calculateBookingAmounts();
-    
 
     return (
       <SafeAreaView style={styles.container}>

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Redirect } from 'expo-router';
-import { View, ActivityIndicator } from 'react-native';
-import { account } from '@/lib/appwrite'; // Adjust path if needed
+import { account } from "@/lib/appwrite"; // Adjust path if needed
+import { Redirect } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
@@ -24,7 +24,14 @@ export default function Index() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#fff",
+        }}
+      >
         <ActivityIndicator size="large" color="coral" />
       </View>
     );

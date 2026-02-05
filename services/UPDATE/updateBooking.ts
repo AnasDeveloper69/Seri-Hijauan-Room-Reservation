@@ -8,30 +8,35 @@ import { BookingData, AppwriteBooking } from '../types';
  * @param updateData - Partial object of BookingData
  */
 export const updateBooking = async (
-    documentId: string, 
-    updateData: Partial<BookingData>
+  bookingId: string,
+  updates: {
+    deposit?: number;
+    status?: "pending" | "completed";
+    amount?: number;
+    balance?: number;
+  }
 ) => {
-    try {
-        const response = await databases.updateDocument(
-            DATABASE_ID,
-            BOOKINGS_COLLECTION_ID,
-            documentId,
-            updateData
-        );
+  try {
+    // Use the same database and collection IDs you're using in getAllBookings
+    const response = await databases.updateDocument(
+      DATABASE_ID,              // Same as in your getAllBookings
+      BOOKINGS_COLLECTION_ID,   // Same as in your getAllBookings
+      bookingId,
+      updates
+    );
 
-        return {
-            success: true,
-            data: response as unknown as AppwriteBooking
-        };
-    } catch (error: any) {
-        console.error('Error updating booking:', error);
-        return {
-            success: false,
-            error: error.message || 'Failed to update booking'
-        };
-    }
+    return {
+      success: true,
+      data: response,
+    };
+  } catch (error) {
+    console.error("Error updating booking:", error);
+    return {
+      success: false,
+      error: error,
+    };
+  }
 };
-
 /**
  * Specifically update payment status (convenience function)
  */

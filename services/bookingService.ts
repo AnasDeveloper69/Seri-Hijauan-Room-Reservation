@@ -1,3 +1,4 @@
+import BookingForm from "@/app/(tabs)/booking";
 import { Query } from "react-native-appwrite";
 import {
   BOOKINGS_COLLECTION_ID,
@@ -7,22 +8,38 @@ import {
 } from "../lib/appwrite";
 
 export interface BookingData {
-  bookingId?: number; // Optional since it has default value 0
-  fullName: string; // Changed from customerName
-  address?: string; // Optional (NULL allowed)
-  phoneNumber: string; // Changed from phone
-  NumAdults: number; // Changed from adults
-  NumChildren?: number; // Changed from children (NULL allowed)
-  vehicleLicensePlate?: string; // Changed from transportPlate (NULL allowed)
-  checkin: string; // Changed from checkIn (datetime)
-  checkout: string; // Changed from checkOut (datetime)
-  Rooms: string[]; // Changed from rooms (note: capital R)
-  deposit?: number; // changed into number
-  fullpayment?: "true" | "false"; // Optional enum (NULL allowed)
-  status?: "pending" | "completed"; // Add if you have a status field
+  bookingId?: number;
+  fullName: string;
+  address?: string;
+  phoneNumber: string;
+  NumAdults: number;
+  NumChildren?: number;
+  vehicleLicensePlate?: string;
+  checkin: string;
+  checkout: string;
+  Rooms: string[];
+  deposit?: number; // Changed to match your usage
+  amount?: number; // Add this for deposit amount
+  fullpayment?: "true" | "false";
+  status?: "pending" | "completed";
   total?: number;
-  balance?: number; // Add if you have an amount field
+  balance?: number;
   paymentType?: "deposit" | "full";
+}
+
+// Interface for update operations
+export interface UpdateBookingData {
+  amount?: number;
+  balance?: number | string;
+  deposit?: "pending" | "completed";
+  status?: "pending" | "completed";
+  fullName?: string;
+  phoneNumber?: string;
+  NumAdults?: number;
+  NumChildren?: number;
+  checkin?: string;
+  checkout?: string;
+  Rooms?: string[];
 }
 
 // Interface for Appwrite document response
@@ -44,7 +61,7 @@ export const bookingService = {
       const response = await databases.createDocument(
         DATABASE_ID,
         BOOKINGS_COLLECTION_ID,
-        ID.unique(), // genereate unique ID automatically
+        ID.unique(),
         bookingData,
       );
 
@@ -90,7 +107,7 @@ export const bookingService = {
 
       return {
         success: true,
-        data: response.documents as unknown as AppwriteBooking[], // Add 'unknown' cast
+        data: response.documents as unknown as AppwriteBooking[],
       };
     } catch (error: any) {
       console.error("Error fetching bookings by status:", error);
@@ -98,6 +115,52 @@ export const bookingService = {
         success: false,
         error: error.message || "Failed to fetch bookings",
         data: [] as AppwriteBooking[],
+      };
+    }
+  },
+
+  // UPDATE BOOKING - ADD THIS METHOD
+  updateBooking: async (bookingId: string, updateData: UpdateBookingData) => {
+    try {
+      console.log("Updating booking:", bookingId, "with data:", updateData);
+
+      const response = await databases.updateDocument(
+        DATABASE_ID,
+        BOOKINGS_COLLECTION_ID,
+        bookingId,
+        updateData,
+      );
+
+      return {
+        success: true,
+        data: response,
+      };
+    } catch (error: any) {
+      console.error("Error updating booking:", error);
+      return {
+        success: false,
+        error: error.message || "Failed to update booking",
+      };
+    }
+  },
+
+  // DELETE BOOKING (Optional but useful)
+  deleteBooking: async (bookingId: string) => {
+    try {
+      await databases.deleteDocument(
+        DATABASE_ID,
+        BOOKINGS_COLLECTION_ID,
+        bookingId,
+      );
+
+      return {
+        success: true,
+      };
+    } catch (error: any) {
+      console.error("Error deleting booking:", error);
+      return {
+        success: false,
+        error: error.message || "Failed to delete booking",
       };
     }
   },
@@ -133,3 +196,5 @@ export const bookingService = {
     return total;
   },
 };
+
+export default BookingForm;
