@@ -60,12 +60,13 @@ export default function Index() {
   }
 
   // Redirect based on auth status and platform
-  if (isAuthenticated && isMobile) {
+  if (isAuthenticated) {
     return <Redirect href="/(tabs)/home" />;
   }
-  if (isAuthenticated && isWeb) {
-    return <Redirect href="/web/home" />;
-  }
+
+  // if (isAuthenticated && isWeb) {
+  //   return <Redirect href="/web/home" />;
+  // }
 
   return <Redirect href="/auth" />;
 }
