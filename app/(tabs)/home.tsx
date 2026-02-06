@@ -48,15 +48,6 @@ interface DashboardStats {
 }
 
 // ========================================
-// MOCK DATA - Replace with real data from your backend
-// ========================================
-// const currentUser: User = {
-//   name: "John Doe",
-//   email: "john.doe@hotel.com",
-//   role: "Hotel Manager",
-// };
-
-// ========================================
 // MAIN DASHBOARD COMPONENT
 // ========================================
 export default function BookingDashboard() {
@@ -162,6 +153,7 @@ export default function BookingDashboard() {
   // Fetch bookings on component mount
   useEffect(() => {
     fetchBookings();
+    fetchUserData();
   }, []);
 
   // Handle pull-to-refresh
@@ -182,9 +174,17 @@ export default function BookingDashboard() {
     ).length;
 
     // Calculate total revenue from completed bookings
-    const totalRevenue = bookings
+    const totalCompleted = bookings
       .filter((b) => b.status === "completed")
       .reduce((sum, booking) => sum + booking.total, 0);
+
+    // calculate total deposit from pending bookings
+    const pendingDeposit = bookings
+      .filter((b) => b.status === "pending")
+      .reduce((sum, booking) => sum + booking.deposit, 0);
+
+    // add both total
+    const totalRevenue = totalCompleted + pendingDeposit;
 
     return {
       totalBookings,
@@ -232,7 +232,8 @@ export default function BookingDashboard() {
             {currentUser.name
               .split(" ")
               .map((n) => n[0])
-              .join("")}
+              .join("")
+              .toUpperCase()}
           </Text>
         </View>
         <View style={styles.userInfo}>

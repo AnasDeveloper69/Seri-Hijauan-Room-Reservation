@@ -441,7 +441,7 @@ export default function WebBookingDashboard() {
         <div style={webStyles.headerContent}>
           <h1 style={webStyles.headerTitle}>Dashboard</h1>
           <p style={webStyles.headerSubtitle}>
-            Welcome back! Here's your booking overview
+            Welcome back! Here your booking overview
           </p>
         </div>
         <button
