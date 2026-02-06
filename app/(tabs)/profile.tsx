@@ -1,59 +1,101 @@
 import { account } from "@/lib/appwrite";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Mock user data - replace with real data from Appwrite
-const currentUser = {
-  name: "John Doe",
-  email: "john.doe@hotel.com",
-  role: "Hotel Manager",
-  joinedDate: "January 2024",
-};
+interface User {
+  name: string;
+  email: string;
+  role: string;
+  joinedDate: string;
+}
 
 export default function Profile() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [userLoading, setUserLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Fetch user data on mount
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      const user = await account.get();
+      const prefs = await account.getPrefs();
+
+      setCurrentUser({
+        name: user.name || "User",
+        email: user.email,
+        role: prefs.role || "Staff",
+        joinedDate: new Date(user.registration * 1000).toLocaleDateString(
+          "en-US",
+          {
+            month: "long",
+            year: "numeric",
+          },
+        ),
+      });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      Alert.alert("Error", "Failed to load user data");
+    } finally {
+      setUserLoading(false);
+    }
+  };
 
   const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await account.deleteSession("current");
-              // Use replace to prevent going back to dashboard
-              router.replace("/auth");
-            } catch (error) {
-              console.error("Logout error:", error);
-              Alert.alert("Error", "Failed to logout. Please try again.");
-            } finally {
-              setLoading(false);
-            }
+    // For web, show custom modal; for mobile, use native alert
+    if (Platform.OS === "web") {
+      setShowLogoutModal(true);
+    } else {
+      Alert.alert(
+        "Logout",
+        "Are you sure you want to logout?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
           },
-        },
-      ],
-      { cancelable: true },
-    );
+          {
+            text: "Logout",
+            style: "destructive",
+            onPress: performLogout,
+          },
+        ],
+        { cancelable: true },
+      );
+    }
+  };
+
+  const performLogout = async () => {
+    setLoading(true);
+    try {
+      await account.deleteSession("current");
+      router.replace("/auth");
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Error", "Failed to logout. Please try again.");
+    } finally {
+      setLoading(false);
+      setShowLogoutModal(false);
+    }
   };
 
   const MenuItem = ({
@@ -99,131 +141,203 @@ export default function Profile() {
         <Text style={styles.headerSubtitle}>Manage your account settings</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* User Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>
-              {currentUser.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
-            </Text>
-          </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{currentUser.name}</Text>
-            <Text style={styles.userEmail}>{currentUser.email}</Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>{currentUser.role}</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.editProfileButton}>
-            <Ionicons name="create-outline" size={20} color="#4F46E5" />
+      {userLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      ) : !currentUser ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load user data</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchUserData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.menuContainer}>
-            <MenuItem
-              icon="person-outline"
-              title="Edit Profile"
-              subtitle="Update your personal information"
-              onPress={() => Alert.alert("Coming Soon", "Edit profile feature")}
-              color="#4F46E5"
-            />
-            <MenuItem
-              icon="lock-closed-outline"
-              title="Change Password"
-              subtitle="Update your password"
-              onPress={() =>
-                Alert.alert("Coming Soon", "Change password feature")
-              }
-              color="#4F46E5"
-            />
-            <MenuItem
-              icon="notifications-outline"
-              title="Notifications"
-              subtitle="Manage notification preferences"
-              onPress={() =>
-                Alert.alert("Coming Soon", "Notification settings")
-              }
-              color="#4F46E5"
-            />
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* User Profile Card */}
+          <View style={styles.profileCard}>
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>
+                {currentUser.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </Text>
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>{currentUser.name}</Text>
+              <Text style={styles.userEmail}>{currentUser.email}</Text>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>{currentUser.role}</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.editProfileButton}>
+              <Ionicons name="create-outline" size={20} color="#4F46E5" />
+            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* App Settings Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App Settings</Text>
-          <View style={styles.menuContainer}>
-            <MenuItem
-              icon="moon-outline"
-              title="Dark Mode"
-              subtitle="Coming soon"
-              color="#6B7280"
-              showChevron={false}
-            />
-            <MenuItem
-              icon="language-outline"
-              title="Language"
-              subtitle="English"
-              onPress={() => Alert.alert("Coming Soon", "Language selection")}
-              color="#6B7280"
-            />
+          {/* Account Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <View style={styles.menuContainer}>
+              <MenuItem
+                icon="person-outline"
+                title="Edit Profile"
+                subtitle="Update your personal information"
+                onPress={() =>
+                  Alert.alert("Coming Soon", "Edit profile feature")
+                }
+                color="#4F46E5"
+              />
+              <MenuItem
+                icon="lock-closed-outline"
+                title="Change Password"
+                subtitle="Update your password"
+                onPress={() =>
+                  Alert.alert("Coming Soon", "Change password feature")
+                }
+                color="#4F46E5"
+              />
+              <MenuItem
+                icon="notifications-outline"
+                title="Notifications"
+                subtitle="Manage notification preferences"
+                onPress={() =>
+                  Alert.alert("Coming Soon", "Notification settings")
+                }
+                color="#4F46E5"
+              />
+            </View>
           </View>
-        </View>
 
-        {/* About Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <View style={styles.menuContainer}>
-            <MenuItem
-              icon="information-circle-outline"
-              title="About App"
-              subtitle="Version 1.0.0"
-              onPress={() =>
-                Alert.alert("Seri Hijauan Booking", "Version 1.0.0")
-              }
-              color="#6B7280"
-            />
-            <MenuItem
-              icon="help-circle-outline"
-              title="Help & Support"
-              subtitle="Get help using the app"
-              onPress={() => Alert.alert("Coming Soon", "Help center")}
-              color="#6B7280"
-            />
-            <MenuItem
-              icon="document-text-outline"
-              title="Terms & Privacy"
-              subtitle="Legal information"
-              onPress={() => Alert.alert("Coming Soon", "Terms and privacy")}
-              color="#6B7280"
-            />
+          {/* App Settings Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>App Settings</Text>
+            <View style={styles.menuContainer}>
+              <MenuItem
+                icon="moon-outline"
+                title="Dark Mode"
+                subtitle="Coming soon"
+                color="#6B7280"
+                showChevron={false}
+              />
+              <MenuItem
+                icon="language-outline"
+                title="Language"
+                subtitle="English"
+                onPress={() => Alert.alert("Coming Soon", "Language selection")}
+                color="#6B7280"
+              />
+            </View>
           </View>
-        </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={[styles.logoutButton, loading && styles.logoutButtonDisabled]}
-          onPress={handleLogout}
-          disabled={loading}
+          {/* About Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About</Text>
+            <View style={styles.menuContainer}>
+              <MenuItem
+                icon="information-circle-outline"
+                title="About App"
+                subtitle="Version 1.0.0"
+                onPress={() =>
+                  Alert.alert("Seri Hijauan Booking", "Version 1.0.0")
+                }
+                color="#6B7280"
+              />
+              <MenuItem
+                icon="help-circle-outline"
+                title="Help & Support"
+                subtitle="Get help using the app"
+                onPress={() => Alert.alert("Coming Soon", "Help center")}
+                color="#6B7280"
+              />
+              <MenuItem
+                icon="document-text-outline"
+                title="Terms & Privacy"
+                subtitle="Legal information"
+                onPress={() => Alert.alert("Coming Soon", "Terms and privacy")}
+                color="#6B7280"
+              />
+            </View>
+          </View>
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={[
+              styles.logoutButton,
+              loading && styles.logoutButtonDisabled,
+            ]}
+            onPress={handleLogout}
+            disabled={loading}
+          >
+            <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.logoutButtonText}>
+              {loading ? "Logging out..." : "Logout"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Footer Info */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Member since {currentUser.joinedDate}
+            </Text>
+          </View>
+        </ScrollView>
+      )}
+
+      {/* Custom Logout Confirmation Modal (for web) */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowLogoutModal(false)}
         >
-          <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
-          <Text style={styles.logoutButtonText}>
-            {loading ? "Logging out..." : "Logout"}
-          </Text>
-        </TouchableOpacity>
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <Ionicons name="log-out-outline" size={32} color="#EF4444" />
+              </View>
+              <Text style={styles.modalTitle}>Logout</Text>
+              <Text style={styles.modalMessage}>
+                Are you sure you want to logout?
+              </Text>
+            </View>
 
-        {/* Footer Info */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Member since {currentUser.joinedDate}
-          </Text>
-        </View>
-      </ScrollView>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={() => setShowLogoutModal(false)}
+                disabled={loading}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButtonLogout,
+                  loading && styles.modalButtonDisabled,
+                ]}
+                onPress={performLogout}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalButtonLogoutText}>Logout</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -247,6 +361,40 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: "#C7D2FE",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#6B7280",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#EF4444",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#4F46E5",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   scrollContent: {
     padding: 16,
@@ -402,5 +550,83 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: "#9CA3AF",
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FEE2E2",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+  },
+  modalButtonCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  modalButtonLogout: {
+    flex: 1,
+    backgroundColor: "#EF4444",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+  },
+  modalButtonLogoutText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  modalButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+    opacity: 0.7,
   },
 });

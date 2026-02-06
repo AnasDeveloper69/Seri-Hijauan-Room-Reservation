@@ -1,16 +1,15 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { Account, ID } from "react-native-appwrite";
 import { Button, HelperText, TextInput } from "react-native-paper";
@@ -172,118 +171,116 @@ export default function AuthScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView style={styles.container}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.content}>
-            <Text style={styles.mainTitle}>Seri Hijauan App</Text>
-            <Text style={styles.title}>
-              {isLogin ? "Welcome Back" : "Create Account"}
+    <KeyboardAvoidingView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.mainTitle}>Seri Hijauan App</Text>
+          <Text style={styles.title}>
+            {isLogin ? "Welcome Back" : "Create Account"}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isLogin ? "Sign in to continue" : "Sign up to get started"}
+          </Text>
+
+          <TextInput
+            label="Username"
+            value={username}
+            onChangeText={(text) => {
+              setUsername(text);
+              setErrors({ ...errors, username: "" });
+            }}
+            autoCapitalize="none"
+            placeholder="johndoe"
+            mode="outlined"
+            style={styles.input}
+            error={!!errors.username}
+            disabled={loading}
+            onSubmitEditing={Keyboard.dismiss}
+            returnKeyType="next"
+          />
+          <HelperText type="error" visible={!!errors.username}>
+            {errors.username}
+          </HelperText>
+
+          {!isLogin && (
+            <>
+              <TextInput
+                label="Email"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setErrors({ ...errors, email: "" });
+                }}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholder="john@example.com"
+                mode="outlined"
+                style={styles.input}
+                error={!!errors.email}
+                disabled={loading}
+                onSubmitEditing={Keyboard.dismiss}
+                returnKeyType="next"
+              />
+              <HelperText type="error" visible={!!errors.email}>
+                {errors.email}
+              </HelperText>
+            </>
+          )}
+
+          <TextInput
+            label="Password"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              setErrors({ ...errors, password: "" });
+            }}
+            autoCapitalize="none"
+            placeholder="Enter your password"
+            mode="outlined"
+            secureTextEntry={secureText}
+            right={
+              <TextInput.Icon
+                icon={secureText ? "eye-off" : "eye"}
+                onPress={() => setSecureText(!secureText)}
+              />
+            }
+            style={styles.input}
+            error={!!errors.password}
+            disabled={loading}
+            onSubmitEditing={isLogin ? handleLogin : handleSignUp}
+            returnKeyType="done"
+          />
+          <HelperText type="error" visible={!!errors.password}>
+            {errors.password}
+          </HelperText>
+
+          <Button
+            mode="contained"
+            onPress={isLogin ? handleLogin : handleSignUp}
+            style={styles.btnLogin}
+            loading={loading}
+            disabled={loading}
+          >
+            {isLogin ? "Login" : "Sign Up"}
+          </Button>
+
+          <View style={styles.toggleContainer}>
+            <Text style={styles.toggleText}>
+              {isLogin ? "New User? " : "Already have an account? "}
             </Text>
-            <Text style={styles.subtitle}>
-              {isLogin ? "Sign in to continue" : "Sign up to get started"}
-            </Text>
-
-            <TextInput
-              label="Username"
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text);
-                setErrors({ ...errors, username: "" });
-              }}
-              autoCapitalize="none"
-              placeholder="johndoe"
-              mode="outlined"
-              style={styles.input}
-              error={!!errors.username}
-              disabled={loading}
-              onSubmitEditing={Keyboard.dismiss}
-              returnKeyType="next"
-            />
-            <HelperText type="error" visible={!!errors.username}>
-              {errors.username}
-            </HelperText>
-
-            {!isLogin && (
-              <>
-                <TextInput
-                  label="Email"
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    setErrors({ ...errors, email: "" });
-                  }}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  placeholder="john@example.com"
-                  mode="outlined"
-                  style={styles.input}
-                  error={!!errors.email}
-                  disabled={loading}
-                  onSubmitEditing={Keyboard.dismiss}
-                  returnKeyType="next"
-                />
-                <HelperText type="error" visible={!!errors.email}>
-                  {errors.email}
-                </HelperText>
-              </>
-            )}
-
-            <TextInput
-              label="Password"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setErrors({ ...errors, password: "" });
-              }}
-              autoCapitalize="none"
-              placeholder="Enter your password"
-              mode="outlined"
-              secureTextEntry={secureText}
-              right={
-                <TextInput.Icon
-                  icon={secureText ? "eye-off" : "eye"}
-                  onPress={() => setSecureText(!secureText)}
-                />
-              }
-              style={styles.input}
-              error={!!errors.password}
-              disabled={loading}
-              onSubmitEditing={isLogin ? handleLogin : handleSignUp}
-              returnKeyType="done"
-            />
-            <HelperText type="error" visible={!!errors.password}>
-              {errors.password}
-            </HelperText>
-
-            <Button
-              mode="contained"
-              onPress={isLogin ? handleLogin : handleSignUp}
-              style={styles.btnLogin}
-              loading={loading}
-              disabled={loading}
-            >
-              {isLogin ? "Login" : "Sign Up"}
-            </Button>
-
-            <View style={styles.toggleContainer}>
-              <Text style={styles.toggleText}>
-                {isLogin ? "New User? " : "Already have an account? "}
+            <TouchableOpacity onPress={toggleAuthMode} disabled={loading}>
+              <Text style={styles.toggleLink}>
+                {isLogin ? "Sign Up" : "Login"}
               </Text>
-              <TouchableOpacity onPress={toggleAuthMode} disabled={loading}>
-                <Text style={styles.toggleLink}>
-                  {isLogin ? "Sign Up" : "Login"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

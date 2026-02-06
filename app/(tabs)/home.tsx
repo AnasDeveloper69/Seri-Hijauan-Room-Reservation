@@ -1,6 +1,8 @@
+import { client } from "@/appwrite";
 import { bookingService } from "@/services/bookingService";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Platform,
   RefreshControl,
   ScrollView,
@@ -9,6 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Account } from "react-native-appwrite";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ========================================
@@ -46,16 +50,18 @@ interface DashboardStats {
 // ========================================
 // MOCK DATA - Replace with real data from your backend
 // ========================================
-const currentUser: User = {
-  name: "John Doe",
-  email: "john.doe@hotel.com",
-  role: "Hotel Manager",
-};
+// const currentUser: User = {
+//   name: "John Doe",
+//   email: "john.doe@hotel.com",
+//   role: "Hotel Manager",
+// };
 
 // ========================================
 // MAIN DASHBOARD COMPONENT
 // ========================================
 export default function BookingDashboard() {
+  console.log("Tabs/home is working");
+
   // State for filtering bookings (pending or completed)
   const [filterStatus, setFilterStatus] = useState<
     "all" | "pending" | "completed"
@@ -64,6 +70,8 @@ export default function BookingDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userLoading, setUserLoading] = useState(true);
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "N/A";
@@ -79,6 +87,36 @@ export default function BookingDashboard() {
       return `${day}-${month}-${year}`;
     } catch (error) {
       return "N/A";
+    }
+  };
+
+  // ========================================
+  // FETCH USER FROM APPWRITE
+  // ========================================
+  const fetchUserData = async () => {
+    console.log("");
+    try {
+      const account = new Account(client);
+      const user = await account.get();
+      const prefs = await account.getPrefs();
+
+      console.log("👤 User data:", user); // ← Add this
+      console.log("⚙️ User prefs:", prefs); // ← Add this
+
+      const userData = {
+        name: user.name || "User",
+        email: user.email,
+        role: prefs.role || "keeper", // ← Default to "keeper" if no role set
+      };
+
+      console.log("✅ Setting currentUser to:", userData); // ← Add this
+      setCurrentUser(userData);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      Alert.alert("Error", "Failed to load user data");
+    } finally {
+      setUserLoading(false);
+      console.log("🏁 fetchUserData finished"); // ← Add this
     }
   };
 
@@ -177,25 +215,38 @@ export default function BookingDashboard() {
   // ========================================
   // RENDER: User Profile Section
   // ========================================
-  const renderUserProfile = () => (
-    <View style={styles.userProfileCard}>
-      <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>
-          {currentUser.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")}
-        </Text>
-      </View>
-      <View style={styles.userInfo}>
-        <Text style={styles.userName}>{currentUser.name}</Text>
-        <Text style={styles.userEmail}>{currentUser.email}</Text>
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleText}>{currentUser.role}</Text>
+  const renderUserProfile = () => {
+    // ← Add null check here
+    if (!currentUser) {
+      return (
+        <View style={styles.userProfileCard}>
+          <Text style={styles.emptyStateText}>Loading user...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.userProfileCard}>
+        <View style={styles.avatarContainer}>
+          <Text style={styles.avatarText}>
+            {currentUser.name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")}
+          </Text>
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{currentUser.name}</Text>
+          <Text style={styles.userEmail}>{currentUser.email}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>
+              {currentUser.role.toUpperCase()}
+            </Text>
+          </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   // ========================================
   // RENDER: Statistics Cards
@@ -450,7 +501,7 @@ export default function BookingDashboard() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Dashboard</Text>
           <Text style={styles.headerSubtitle}>
-            Welcome back! Here's your booking overview
+            Welcome back! Here your booking overview
           </Text>
         </View>
 

@@ -1,4 +1,3 @@
-import BookingForm from "@/app/(tabs)/booking";
 import { Query } from "react-native-appwrite";
 import {
   BOOKINGS_COLLECTION_ID,
@@ -196,5 +195,3 @@ export const bookingService = {
     return total;
   },
 };
-
-export default BookingForm;
